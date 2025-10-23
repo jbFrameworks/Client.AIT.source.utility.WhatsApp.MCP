@@ -13,22 +13,35 @@ This backend replaces the previous Go + Python hybrid architecture with a unifie
    - Exposes 13 tools for WhatsApp interaction
    - Built with official `@modelcontextprotocol/sdk`
 
-2. **WhatsApp Client** (`src/whatsapp/`)
+2. **REST API Server** (`src/api/server.ts`) ✨ NEW
+   - Express-based HTTP API
+   - Full CRUD operations for chats, messages, contacts
+   - Authentication status endpoints
+   - CORS enabled for frontend integration
+
+3. **WebSocket Server** (`src/api/websocket.ts`) ✨ NEW
+   - Real-time message updates
+   - Connection status broadcasts
+   - Chat update notifications
+   - Heartbeat mechanism
+
+4. **WhatsApp Client** (`src/whatsapp/`)
    - Uses `@whiskeysockets/baileys` library
    - Handles QR code authentication
    - Processes incoming/outgoing messages
    - Manages media (images, videos, audio, documents)
+   - Event emitter for real-time updates
 
-3. **Data Store** (`src/store/`)
+5. **Data Store** (`src/store/`)
    - Abstracted interface supporting multiple backends
    - Default: JSON files (simple, no dependencies)
    - Extensible: SQLite and MongoDB (to be implemented)
 
-4. **Services** (`src/service/`)
+6. **Services** (`src/service/`)
    - Business logic layer
    - MessageService, ChatService, ContactService
 
-5. **Configuration** (`src/config/`)
+7. **Configuration** (`src/config/`)
    - Environment-based configuration
    - Supports development and production modes
 
@@ -60,6 +73,31 @@ npm start
 # Run tests
 npm test
 ```
+
+## REST API
+
+The backend now includes a complete REST API with WebSocket support!
+
+### API Endpoints
+
+**Base URL**: `http://localhost:8080`
+
+- **Authentication**: `/api/auth/*` - Status, QR code, logout
+- **Chats**: `/api/chats/*` - List, get, search chats
+- **Messages**: `/api/messages/*` - List, send, download media
+- **Contacts**: `/api/contacts/*` - List, search contacts
+
+### WebSocket
+
+**URL**: `ws://localhost:8080/ws`
+
+Real-time events:
+- New messages
+- Chat updates
+- Connection status changes
+- Heartbeat pings
+
+See [API.md](./API.md) for complete API documentation with examples.
 
 ## MCP Tools
 

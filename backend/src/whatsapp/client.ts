@@ -10,12 +10,18 @@ import makeWASocket, {
   isJidUser,
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
-import type { Message, Chat, Contact } from '@whatsapp-mcp/common';
+import type { Message, Chat, Contact, ConnectionStatus } from '@whatsapp-mcp/common';
 import { phoneNumberToJid, isGroupJid } from '@whatsapp-mcp/common';
 import { AuthManager } from './auth.js';
 import { MediaHandler } from './mediaHandler.js';
 import { whatsappLogger } from '../util/logger.js';
 import { BaseStore } from '../store/base.store.js';
+
+export type WhatsAppEventListener = {
+  onMessage?: (message: Message) => void;
+  onChatUpdate?: (chat: Chat) => void;
+  onConnectionUpdate?: (status: ConnectionStatus) => void;
+};
 
 export class WhatsAppClient {
   private sock?: WASocket;
@@ -23,11 +29,41 @@ export class WhatsAppClient {
   private mediaHandler: MediaHandler;
   private store: BaseStore;
   private isReady = false;
+  private eventListenerList: WhatsAppEventListener[] = [];
 
   constructor(store: BaseStore) {
     this.store = store;
     this.authManager = new AuthManager();
     this.mediaHandler = new MediaHandler();
+  }
+
+  addEventListener(listener: WhatsAppEventListener) {
+    this.eventListenerList.push(listener);
+  }
+
+  removeEventListener(listener: WhatsAppEventListener) {
+    const index = this.eventListenerList.indexOf(listener);
+    if (index > -1) {
+      this.eventListenerList.splice(index, 1);
+    }
+  }
+
+  private emitMessage(message: Message) {
+    this.eventListenerList.forEach((listener) => {
+      listener.onMessage?.(message);
+    });
+  }
+
+  private emitChatUpdate(chat: Chat) {
+    this.eventListenerList.forEach((listener) => {
+      listener.onChatUpdate?.(chat);
+    });
+  }
+
+  private emitConnectionUpdate(status: ConnectionStatus) {
+    this.eventListenerList.forEach((listener) => {
+      listener.onConnectionUpdate?.(status);
+    });
   }
 
   async initialize(): Promise<void> {
@@ -70,6 +106,7 @@ export class WhatsAppClient {
 
         whatsappLogger.info(`Connection closed. Reconnecting: ${shouldReconnect}`);
         this.authManager.updateConnectionStatus('disconnected');
+        this.emitConnectionUpdate('disconnected');
 
         if (shouldReconnect) {
           await this.initialize();
@@ -77,12 +114,14 @@ export class WhatsAppClient {
       } else if (connection === 'open') {
         whatsappLogger.info('Connection opened successfully');
         this.authManager.updateConnectionStatus('connected');
+        this.emitConnectionUpdate('connected');
         this.isReady = true;
 
         // Load initial data
         await this.loadInitialData();
       } else if (connection === 'connecting') {
         this.authManager.updateConnectionStatus('connecting');
+        this.emitConnectionUpdate('connecting');
       }
     });
 
@@ -168,7 +207,11 @@ export class WhatsAppClient {
       if (chat) {
         chat.lastMessageTime = timestamp;
         await this.store.storeChat(chat);
+        this.emitChatUpdate(chat);
       }
+
+      // Emit message event
+      this.emitMessage(message);
 
       whatsappLogger.debug(`Message stored: ${messageId} from ${chatJid}`);
     } catch (error) {
@@ -214,6 +257,7 @@ export class WhatsAppClient {
   private async loadInitialData() {
     whatsappLogger.info('Loading initial data...');
     this.authManager.updateConnectionStatus('ready');
+    this.emitConnectionUpdate('ready');
   }
 
   async sendMessage(recipient: string, text: string): Promise<proto.WebMessageInfo | null> {
