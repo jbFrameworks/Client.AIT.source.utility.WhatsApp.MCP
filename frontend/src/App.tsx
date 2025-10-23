@@ -1,0 +1,24 @@
+/**
+ * Main App component
+ * TODO: Implement with React Router and Redux Provider
+ */
+
+function App() {
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          WhatsApp MCP Client
+        </h1>
+        <p className="text-gray-600">
+          Frontend implementation pending - Backend is ready!
+        </p>
+        <p className="text-sm text-gray-500 mt-2">
+          See backend/README.md for backend usage
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default App;
